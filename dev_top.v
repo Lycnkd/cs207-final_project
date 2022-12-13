@@ -45,7 +45,8 @@ module SimulatedDevice(
     output reg onState,NsState,SState,MState
   );
      reg[0:0] powerOn,powerOff,turnLeft,turnRight;
-    button_debounce b1(.clk(sys_clk),.button_in(powerOn_n),.button_out(powerOn));
+    oneSecond os(.clk(sys_clk),.button_in(powerOn_n),.button_out(powerOn));
+    //button_debounce b1(.clk(sys_clk),.button_in(powerOn_n),.button_out(powerOn));
     button_debounce b2(.clk(sys_clk),.button_in(powerOff_n),.button_out(powerOff));
     button_debounce b3(.clk(sys_clk),.button_in(turnLeft_n),.button_out(turnLeft));
     button_debounce b4(.clk(sys_clk),.button_in(turnRight_n),.button_out(turnRight));
