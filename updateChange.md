@@ -1,5 +1,2 @@
-yep
-dfasd
-asdfasd
-sadfds
-update
+防抖
+手动模式
