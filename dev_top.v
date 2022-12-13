@@ -23,7 +23,7 @@
 module SimulatedDevice(
     input sys_clk, //bind to P17 pin (100MHz system clock)
 //    input rst,
-    input [0:0] powerOn,powerOff,turnLeft,turnRight,//button
+    input [0:0] powerOn_n,powerOff_n,turnLeft_n,turnRight_n,//button
     input [0:0] moduleChange,throttle,clutch,brake,rgShift,//switch
     input rx, //bind to N5 pin
     output tx, //bind to T4 pin
@@ -44,7 +44,11 @@ module SimulatedDevice(
     
     output reg onState,NsState,SState,MState
   );
-    
+     reg[0:0] powerOn,powerOff,turnLeft,turnRight;
+    button_debounce b1(.clk(sys_clk),.button_in(powerOn_n),.button_out(powerOn));
+    button_debounce b2(.clk(sys_clk),.button_in(powerOff_n),.button_out(powerOff));
+    button_debounce b3(.clk(sys_clk),.button_in(turnLeft_n),.button_out(turnLeft));
+    button_debounce b4(.clk(sys_clk),.button_in(turnRight_n),.button_out(turnRight));
      reg [0:0] goStraight,goBackward,goLeft,goRight;  //move signal
 //    wire [7:0] in = {2'b10, destroy_barrier_signal, place_barrier_signal, turn_right_signal, turn_left_signal, move_backward_signal, move_forward_signal};
     wire [7:0] rec;
@@ -53,7 +57,7 @@ module SimulatedDevice(
     assign right_detector = rec[2];
     assign back_detector = rec[3];
     
-    reg [2:0] state,next_state; //ÏÖÌ¬ºÍ´ÎÌ¬
+    reg [2:0] state,next_state; //ç°æ€å’Œæ¬¡æ€
     parameter PowerOffState = 3'b000, PowerOnState = 3'b001, NotStaringState = 3'b010, StartingState = 3'b011, MovingState = 3'b100;
 //               WaitingCommandState = 3'b101, TurnState = 3'b110, StraightForwardState = 3'b111;
                
@@ -130,6 +134,6 @@ module SimulatedDevice(
               end               
               
     wire [7:0] in = {2'b10, 1'b0, 1'b0, goRight,goLeft,goBackward,goStraight};
-    uart_top md(.clk(sys_clk), .rst(0), .data_in(in), .data_rec(rec), .rxd(rx), .txd(tx));//×îºóÒª¸Ä³ÉÏÂÃæÕâÒ»ĞĞ
+    uart_top md(.clk(sys_clk), .rst(0), .data_in(in), .data_rec(rec), .rxd(rx), .txd(tx));//æœ€åè¦æ”¹æˆä¸‹é¢è¿™ä¸€è¡Œ
     //    uart_top md(.clk(sys_clk), .rst(rst), .data_in(in), .data_rec(rec), .rxd(rx), .txd(tx));                           
 endmodule
