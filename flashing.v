@@ -45,6 +45,7 @@ output[0:0] light
     010:on=1'b1;
     011:on=1'b0;
     100:on=1'b0;
+    default:on=1'b0;
     endcase
     end
     
@@ -58,6 +59,9 @@ output[0:0] light
     if(on==1'b0&&flashing==1'b1)begin
     cnt<=0;
     out<=1'b1;
+    end
+    if(on==1'b0&&flashing==1'b0&&direction==1'b1)begin
+    cnt<=cnt+1;
     end
     end
     
