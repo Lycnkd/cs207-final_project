@@ -38,10 +38,10 @@ output button_out
         assign button_clk = record[0]^record[1];
     
     always@(posedge clk)begin
-            if(button_clk==1)begin
+            if(button_clk==1'b1)begin
             cnt<=0;
             end
-            else if(record[0]==1&&record[1]==1) begin
+            else if(record[0]==1'b1&&record[1]==1'b1) begin
             cnt<=cnt+1'b1;
             end
             else begin
@@ -49,10 +49,13 @@ output button_out
             end
             end
             
-            always @(posedge  clk)begin
+            always @(posedge  clk,negedge button_in)begin
                 if(cnt==27'd100000000)begin
                 out<=record[0];
                 end
+                if(~button_in)begin
+                                out<=1'b0;
+                                end
                 end
                 
     assign button_out=out;
