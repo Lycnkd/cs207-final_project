@@ -18,8 +18,6 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-
-
 module flashing(
 input clk,
 input[2:0] state,
@@ -40,11 +38,11 @@ output[0:0] light
     
     always@(state) begin
     case(state)
-    000:on=1'b1;
-    001:on=1'b1;
-    010:on=1'b1;
-    011:on=1'b0;
-    100:on=1'b0;
+    3'b000:on=1'b1;
+    3'b001:on=1'b1;
+    3'b010:on=1'b1;
+    3'b011:on=1'b0;
+    3'b100:on=1'b0;
     default:on=1'b0;
     endcase
     end
@@ -63,15 +61,11 @@ output[0:0] light
     if(on==1'b0&&flashing==1'b0&&direction==1'b1)begin
     cnt<=cnt+1;
     end
-    if(cnt==26'd50000000)begin
+    if(cnt==26'd25000000)begin
                         out<=~out;
                         cnt<=0;
                         end
     end
-    
-    //always @(posedge  clk)begin
-                    
-                    //end
-    
+   
     assign light=out;
 endmodule
