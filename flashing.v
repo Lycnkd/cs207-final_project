@@ -63,13 +63,15 @@ output[0:0] light
     if(on==1'b0&&flashing==1'b0&&direction==1'b1)begin
     cnt<=cnt+1;
     end
+    if(cnt==26'd50000000)begin
+                        out<=~out;
+                        cnt<=0;
+                        end
     end
     
-    always @(posedge  clk)begin
-                    if(cnt==26'd50000000)begin
-                    out<=~out;
-                    end
-                    end
+    //always @(posedge  clk)begin
+                    
+                    //end
     
     assign light=out;
 endmodule
