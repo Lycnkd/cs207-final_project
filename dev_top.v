@@ -23,7 +23,7 @@
 module SimulatedDevice(
     input sys_clk, //bind to P17 pin (100MHz system clock)
 //    input rst,
-    input [0:0] powerOn_n,powerOff_n,turnLeft_n,turnRight_n,//button
+    input [0:0] powerOn_n,powerOff_n,turnLeft_n,turnRight_n,moveStraight_n,//button
     input [0:0] moduleChange,throttle_n,clutch,brake,rgShift,//switch
     input rx, //bind to N5 pin
     output tx, //bind to T4 pin
@@ -47,7 +47,7 @@ module SimulatedDevice(
     output reg onState,NsState,SState,MState //状态是否激活
   );
   
-      wire[0:0] powerOn,powerOff,turnLeft,turnRight; //防抖后的按钮
+      wire[0:0] powerOn,powerOff,turnLeft,turnRight,moveStraight; //防抖后的按钮
       
       //按一秒后开机 
       oneSecond os(.clk(sys_clk),.button_in(powerOn_n),.button_out(powerOn));
@@ -56,6 +56,7 @@ module SimulatedDevice(
       button_debounce b2(.clk(sys_clk),.button_in(powerOff_n),.button_out(powerOff));
       button_debounce b3(.clk(sys_clk),.button_in(turnLeft_n),.button_out(turnLeft));
       button_debounce b4(.clk(sys_clk),.button_in(turnRight_n),.button_out(turnRight));
+      button_debounce b5(.clk(sys_clk),.button_in(moveStraight_n),.button_out(moveStraight));
     
      reg[0:0] throttle;//油门信号
      reg [0:0] goStraight,goBackward,goLeft,goRight;  //move signal
@@ -69,9 +70,15 @@ module SimulatedDevice(
     reg[0:0] reverseJudge;   //倒车信号是否被激活
     reg [2:0] state,next_state; //状态机的现态和次态
     
+    reg[0:0] ifInFork;//半自动 是否在路口
+    
+    //半自动的转向信号和是否转向结束
+    reg[0:0] Left,Right;
+    reg[0:0] turnIsOver;
+    
     //状态机的状态
-    parameter PowerOffState = 3'b000, PowerOnState = 3'b001, NotStaringState = 3'b010, StartingState = 3'b011, MovingState = 3'b100;
-//               WaitingCommandState = 3'b101, TurnState = 3'b110, StraightForwardState = 3'b111;
+    parameter PowerOffState = 3'b000, PowerOnState = 3'b001, NotStaringState = 3'b010, StartingState = 3'b011, MovingState = 3'b100,
+               WaitingCommandState = 3'b101, TurnState = 3'b110, StraightForwardState = 3'b111;
              
              //防抱死对油门信号的处理
              always @(posedge sys_clk)
@@ -96,6 +103,47 @@ module SimulatedDevice(
              default:       {reverseJudge,onState} = 2'b00;
              endcase             
              end
+             
+             //是否在路口的判定 以及 Left Right 信号的处理
+             always @(posedge sys_clk)
+             begin
+             case(state)
+             WaitingCommandState:if(turnLeft==1&&turnRight==0) {Left,Right,ifInFork} = 3'b100;
+                                 else if(turnLeft==0&&turnRight==1)  {Left,Right,ifInFork} = 3'b010;
+                                 else {Left,Right,ifInFork} = 3'b000;
+                                 
+             TurnState:          if(turnIsOver) {Left,Right,ifInFork} = 3'b000;
+                                 else {Left,Right,ifInFork} = {Left,Right,1'b0};    
+                                                 
+             StraightForwardState: if(rec[1]==0||rec[2]==0)  {Left,Right,ifInFork} = 3'b001;
+                                   else {Left,Right,ifInFork} = 3'b000;
+             default:              {Left,Right,ifInFork} = 3'b000;
+             endcase
+             end
+             
+//             always@(state,rec[1],rec[2])
+//             begin
+//             case(state)
+//              StraightForwardState: if(rec[1]==0||rec[2]==0)  ifInFork = 1'b1;
+//                                    else ifInFork = 1'b0;
+//             default:    ifInFork = 1'b0;
+//             endcase
+//             end      
+              
+//             //是否在路口的判定 以及 Left Right 信号的处理
+//                          always @(posedge sys_clk)
+//                          begin
+//                          case(state)
+//                          WaitingCommandState:if(turnLeft==1&&turnRight==0) {Left,Right} = 2'b10;
+//                                              else if(turnLeft==0&&turnRight==1)  {Left,Right} = 2'b01;
+//                                              else {Left,Right} = 2'b00;
+                                              
+//                          TurnState:          if(turnIsOver) {Left,Right} = 2'b00;
+//                                              else {Left,Right} = {Left,Right};    
+//                          default:              {Left,Right} = 2'b00;
+//                          endcase
+//                          end                           
+           
                
                //自动机
                always @(posedge sys_clk)
@@ -109,13 +157,29 @@ module SimulatedDevice(
                   end
               
               //自动机状态的跳转
-              always @(state,powerOn,powerOff,turnLeft,turnRight,moduleChange,throttle,clutch,brake,rgShift,reverseJudge)
+              always @(state,powerOn,powerOff,turnLeft,turnRight,moduleChange,throttle,clutch,brake,rgShift,reverseJudge,moveStraight,turnIsOver,ifInFork)
               begin 
               case(state)
               PowerOffState: if(powerOn) next_state = PowerOnState; else next_state = PowerOffState;
-              PowerOnState:  next_state = NotStaringState;
-//              if(moduleChange) next_state = NotStaringState; else next_state = NotStaringState;
-//              WaitingCommandState;
+              PowerOnState:  if(moduleChange) next_state = WaitingCommandState; else next_state = NotStaringState;
+              //next_state = NotStaringState;
+              
+              WaitingCommandState: if(moveStraight)
+                                   begin
+                                   next_state = StraightForwardState;
+                                   end
+                                   else if(turnLeft==1&&turnRight==0)
+                                   next_state = TurnState;
+                                   else if(turnLeft==0&&turnRight==1)
+                                   next_state = TurnState;
+                                   else next_state = WaitingCommandState;
+                                   
+             TurnState: if(turnIsOver) next_state = StraightForwardState;
+                        else next_state = TurnState;
+                        
+             StraightForwardState: if(ifInFork) next_state = WaitingCommandState;
+                                  else next_state = StraightForwardState;
+              
               NotStaringState: if(throttle)
                                begin
                                if(clutch==1&&brake==0) 
@@ -133,10 +197,6 @@ module SimulatedDevice(
                             else if(throttle==1&&clutch==0)
                             next_state = MovingState;                     
                             else next_state = StartingState;                                                       
-//                            if (clutch==1&&rgShift==1)                           
-//                            {reverseJudge,onState} = 2'b11;                                                 
-//                            else if(throttle==1&&clutch==0)
-//                            next_state = MovingState;    
                        
               MovingState:  if(brake) next_state = NotStaringState;
                             else if(clutch==1 || throttle==0) 
@@ -148,18 +208,26 @@ module SimulatedDevice(
                             else next_state = MovingState;
                             end     
                             else next_state = MovingState;                                                        
-//                            if(rgShift==1&&reverseJudge==1'b0) next_state = PowerOffState;
-//                            else if(rgShift==1&&reverseJudge==1'b1&&throttle==1) next_state = MovingState;
               default: next_state = PowerOnState;
               endcase           
               end 
               
               //自动机的输出                              
-              always@(state,turnLeft,turnRight,rgShift,reverseJudge)
+              always@(state,turnLeft,turnRight,rgShift,reverseJudge,moveStraight,Left,Right)
               begin
               case(state)
               PowerOffState:{goStraight,goBackward,goLeft,goRight,NsState,SState,MState}=7'b0000111;
               PowerOnState:{goStraight,goBackward,goLeft,goRight,NsState,SState,MState}=7'b0000000;
+              
+              //半自动
+              WaitingCommandState: {goStraight,goBackward,goLeft,goRight,NsState,SState,MState}=7'b0000100;
+              TurnState: if(Left==Right) {goStraight,goBackward,goLeft,goRight,NsState,SState,MState}=7'b0000010;
+                         else if(Left==1&&Right==0) {goStraight,goBackward,goLeft,goRight,NsState,SState,MState}=7'b0010010;
+                         else if(Left==0&&Right==1) {goStraight,goBackward,goLeft,goRight,NsState,SState,MState}=7'b0001010;
+                         else {goStraight,goBackward,goLeft,goRight,NsState,SState,MState}=7'b0000111;
+              StraightForwardState:  {goStraight,goBackward,goLeft,goRight,NsState,SState,MState}=7'b1000001;
+              
+              //手动挡                                 
               NotStaringState: {goStraight,goBackward,goLeft,goRight,NsState,SState,MState}=7'b0000100;
               StartingState:if(turnLeft==turnRight){goStraight,goBackward,goLeft,goRight,NsState,SState,MState}=7'b0000010;
                             else if(turnLeft==1&&turnRight==0) {goStraight,goBackward,goLeft,goRight,NsState,SState,MState}=7'b0010010;
