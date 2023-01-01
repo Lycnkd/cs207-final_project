@@ -26,11 +26,11 @@ input[2:0] state,
 output[0:0] turnIsOver
     );
 
-reg[0:0] beginToCount=1'b0;
-reg[0:0] turn=1'b0;
+reg[0:0] beginToCount;
+reg[0:0] turn;
 reg [25:0] cnt;
 reg [1:0] record = 2'b00;
-wire[0:0] en=1'b0;
+wire[0:0] en;
 //wire out
 
 always@(posedge clk) begin
@@ -48,7 +48,14 @@ default:beginToCount=1'b0;
 endcase
 end
 
-
+//always@(state) begin
+//case(state)
+////3'b110:beginToCount=1'b1;
+//3'b110:turn=1'b0;
+////default:beginToCount=1'b0;
+//default:turn=1'b0;
+//endcase
+//end
 
 always@(posedge clk) begin
 if(en==1'b1)begin
@@ -61,6 +68,9 @@ if(cnt==26'd50000000)begin
                         turn=1'b1;
                         //cnt<=0;
                         end
+if(state==3'b000||state==3'b001||state==3'b010||state==3'b011||state==3'b100||state==3'b101||state==3'b111)begin
+turn=1'b0;
+end
 end
 
 assign turnIsOver=turn;
