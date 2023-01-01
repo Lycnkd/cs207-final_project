@@ -20,6 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
+
 module SimulatedDevice(
     input sys_clk, //bind to P17 pin (100MHz system clock)
 //    input rst,
@@ -75,6 +76,10 @@ module SimulatedDevice(
     //半自动的转向信号和是否转向结束
     reg[0:0] Left,Right;
     reg[0:0] turnIsOver;
+    reg[0:0] moveIsOver;
+        
+    turning t1(.clk(sys_clk),.state(state),.turnIsOver(turnIsOver));
+    moving  m1(.clk(sys_clk),.state(state),.moveIsOver(moveIsOver));
     
     //状态机的状态
     parameter PowerOffState = 3'b000, PowerOnState = 3'b001, NotStaringState = 3'b010, StartingState = 3'b011, MovingState = 3'b100,
@@ -115,7 +120,7 @@ module SimulatedDevice(
              TurnState:          if(turnIsOver) {Left,Right,ifInFork} = 3'b000;
                                  else {Left,Right,ifInFork} = {Left,Right,1'b0};    
                                                  
-             StraightForwardState: if(rec[1]==0||rec[2]==0)  {Left,Right,ifInFork} = 3'b001;
+             StraightForwardState: if((rec[1]==0&&moveIsOver==1)||(rec[2]==0&&moveIsOver==1))  {Left,Right,ifInFork} = 3'b001;
                                    else {Left,Right,ifInFork} = 3'b000;
              default:              {Left,Right,ifInFork} = 3'b000;
              endcase
